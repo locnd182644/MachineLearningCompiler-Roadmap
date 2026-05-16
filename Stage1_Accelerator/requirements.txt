@@ -1,0 +1,17 @@
+# Python dependencies — Stage 1 Accelerator
+# Cài: pip install -r requirements.txt
+
+numpy
+matplotlib
+
+# Tuần 1-6: benchmark / quantization / Flash Attention
+torch
+torchvision
+
+# Tuần 6: Flash Attention bằng Triton (GPU NVIDIA)
+triton ; platform_system == "Linux"
+
+# --- Cài riêng (KHÔNG qua file này) ---
+# Tuần 6 Luckfox NPU: rknn-toolkit2
+#   Toolkit này phân phối qua wheel của Rockchip, không có trên PyPI chuẩn.
+#   Xem: week6-memory-tiling-npu/luckfox/README.md

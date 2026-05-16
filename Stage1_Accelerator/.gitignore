@@ -1,0 +1,39 @@
+# Build artifacts
+build/
+*.o
+*.obj
+*.exe
+*.out
+memcpy_bench
+avx_matmul
+matmul_naive
+matmul_tiled
+matmul_3level
+
+# Profiler reports
+*.ncu-rep
+*.nsys-rep
+profile_*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Model artifacts
+*.onnx
+*.rknn
+*.pth
+calib_dataset.txt
+datasets/
+
+# Plots / generated output
+*.png
+*.svg
+results/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
