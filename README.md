@@ -3,15 +3,73 @@
 > **Lộ trình tự học từ con số không đến Machine Learning Compiler Engineer cho AI accelerator chips (TPU/NPU/ASIC).**
 > Hành trình cá nhân, mở để bất kỳ ai cùng quan tâm tham khảo, fork, hoặc đồng hành.
 
-[![Status](https://img.shields.io/badge/status-in_progress-yellow)](https://github.com)
+[![Status](https://img.shields.io/badge/status-in_progress-yellow)](./stage1_Accelerator/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Language](https://img.shields.io/badge/lang-VN%2FEN-red)](https://github.com)
+<!-- [![Language](https://img.shields.io/badge/lang-VN%2FEN-red)](https://github.com) -->
 
 ---
 
 ## 📌 Tổng quan
 
-Machine Learning Compiler (ML Compiler) là **cây cầu giữa mô hình AI (PyTorch/JAX) và silicon chuyên dụng (TPU/NPU/ASIC)**. Khi mỗi chip AI mới ra đời cần toàn bộ software stack riêng, ML Compiler Engineer là vai trò chuyên biệt, lương cao, và nhu cầu tuyển dụng đang tăng mạnh (Google, NVIDIA, Tenstorrent, Groq, Cerebras, AWS Trainium, Apple, Huawei, Modular, v.v.).
+ML Compiler là gì?
+Một **Machine Learning Compiler** là phần mềm dịch mô hình AI (viết bằng PyTorch, JAX, TensorFlow, ...) thành chuỗi lệnh mà phần cứng chuyên dụng (TPU, NPU, ASIC, GPU) có thể thực thi hiệu quả. Nó là cây cầu giữa hai thế giới:
+
+```
+┌─────────────────────────┐                  ┌─────────────────────────┐
+│   THẾ GIỚI AI/ML        │                  │   THẾ GIỚI SILICON      │
+│-------------------------│                  │-------------------------│
+│  • PyTorch, JAX, TF     │   ML COMPILER    │  • Systolic arrays      │
+│  • Transformer, CNN     │  ◄─────────────► │  • Tensor cores         │
+│  • Researcher viết      │                  │  • HBM, SRAM, NoC       │
+│    Python ở mức cao     │                  │  • ISA chuyên dụng      │
+└─────────────────────────┘                  └─────────────────────────┘
+```
+
+**Tại sao ngành này tồn tại?**
+Có **3 lực** va vào nhau tạo ra cơn bùng nổ nghề ML Compiler Engineer:
+- **1. Mô hình AI tăng theo cấp số nhân.** GPT-2 (2019) có 1.5B params. GPT-4 ước ~1.7T. Llama 3 405B. Compute demand tăng ~10x mỗi năm. Không một CPU/GPU đa năng nào đáp ứng nổi về chi phí và năng lượng.
+- **2. Định luật Dennard scaling đã chết từ 2006.** Tăng transistor không còn đồng nghĩa tăng clock speed mà không tăng điện năng. Cách duy nhất để tăng hiệu năng/watt là specialization — thiết kế chip chỉ giỏi đúng 1 việc (ví dụ: matmul lớn cho deep learning).
+- **3. Mỗi chip chuyên dụng có ISA riêng.** TPU không chạy được CUDA. Tenstorrent không chạy được PyTorch native. Mỗi chip mới ra đời cần toàn bộ software stack mới — và compiler là thành phần đắt nhất, quan trọng nhất trong stack đó.
+
+**Stack compiler engineer**
+```
+┌────────────────────────────────────────────────────────────────┐
+│  USER LAYER                                                    │
+│  • PyTorch / JAX / Hugging Face transformers / vLLM            │
+│  Ai làm: ML researcher, data scientist                         │
+└────────────────────────────────────────────────────────────────┘
+                            ↓
+┌────────────────────────────────────────────────────────────────┐
+│  GRAPH IR LAYER                                                │
+│  • torch.fx, StableHLO, Relay, ONNX                            │
+│  Optimizations: const folding, CSE, op fusion                  │
+└────────────────────────────────────────────────────────────────┘
+                            ↓                                         ┐
+┌────────────────────────────────────────────────────────────────┐    │
+│  TENSOR IR LAYER                                               │    │
+│  • Linalg (MLIR), TVM TE/TIR, Triton IR                        │    │
+│  Optimizations: tiling, fusion, layout, vectorize              │    ├─ ML COMPILER
+└────────────────────────────────────────────────────────────────┘    │  ENGINEER
+                            ↓                                         │  (bạn ở đây)
+┌────────────────────────────────────────────────────────────────┐    │
+│  LOW-LEVEL IR                                                  │    │
+│  • Affine/SCF, LLVM IR, PTX, SPIR-V                            │    │
+│  Optimizations: register alloc, instr scheduling               │    │
+└────────────────────────────────────────────────────────────────┘    ┘
+                            ↓
+┌────────────────────────────────────────────────────────────────┐
+│  RUNTIME + DRIVER                                              │
+│  • Memory pool, command queue, DMA, kernel module              │
+│  Ai làm: systems engineer (overlap với compiler engineer)      │
+└────────────────────────────────────────────────────────────────┘
+                            ↓
+┌────────────────────────────────────────────────────────────────┐
+│  HARDWARE                                                      │
+│  • Compute units, memory hierarchy, interconnect               │
+│  Ai làm: hardware/silicon engineer                             │
+└────────────────────────────────────────────────────────────────┘
+```
+
 
 Repo này là **lộ trình 4 giai đoạn** mình tự thiết kế để đi từ nền tảng kiến trúc đến trở thành compiler engineer chuyên về AI chip. Toàn bộ project, code, note, và blog post sẽ được public ở đây.
 
@@ -361,9 +419,9 @@ Repo này là journey cá nhân, nhưng welcome:
 
 ## 📧 Liên hệ
 
-- GitHub: *[your-username]*
-- Email: *[your-email]*
-- LinkedIn: *[your-linkedin]*
+- GitHub: *locnd182644*
+- Email: *duyloca1@gmail.com*
+- Facebook: *https://www.facebook.com/locnguyenduy196*
 
 ---
 
