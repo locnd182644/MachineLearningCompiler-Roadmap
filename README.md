@@ -44,7 +44,7 @@ Có **3 lực** va vào nhau tạo ra cơn bùng nổ nghề ML Compiler Enginee
 │  • torch.fx, StableHLO, Relay, ONNX                            │
 │  Optimizations: const folding, CSE, op fusion                  │
 └────────────────────────────────────────────────────────────────┘
-                            ↓                                         ┐
+                            ↓                                       ──┐
 ┌────────────────────────────────────────────────────────────────┐    │
 │  TENSOR IR LAYER                                               │    │
 │  • Linalg (MLIR), TVM TE/TIR, Triton IR                        │    │
@@ -55,8 +55,8 @@ Có **3 lực** va vào nhau tạo ra cơn bùng nổ nghề ML Compiler Enginee
 │  LOW-LEVEL IR                                                  │    │
 │  • Affine/SCF, LLVM IR, PTX, SPIR-V                            │    │
 │  Optimizations: register alloc, instr scheduling               │    │
-└────────────────────────────────────────────────────────────────┘    ┘
-                            ↓
+└────────────────────────────────────────────────────────────────┘    │
+                            ↓                                       ──┘
 ┌────────────────────────────────────────────────────────────────┐
 │  RUNTIME + DRIVER                                              │
 │  • Memory pool, command queue, DMA, kernel module              │
