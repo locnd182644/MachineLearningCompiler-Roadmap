@@ -30,8 +30,8 @@ python roofline_measured.py   # cần GPU NVIDIA
 
 ## Checklist output cuối tuần
 
-- [ ] `memcpy_bench` chạy, thấy BW giảm rõ khi size vượt L3
-- [ ] `roofline_theory.py` in AI + bound cho 5 kernel; **TODO**: vẽ plot roofline
+- [x] `memcpy_bench` chạy, thấy BW giảm rõ khi size vượt L3
+- [x] `roofline_theory.py` in AI + bound cho 5 kernel; **TODO**: vẽ plot roofline
 - [ ] `roofline_measured.py` cho % peak của matmul và vecadd
 - [ ] Viết phần "chỗ chênh lệch lý thuyết vs thực tế" vào README này bên dưới
 
