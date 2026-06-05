@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Systolic Array — Output Stationary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0f14;
+    --panel:#11161f;
+    --panel-2:#0e131b;
+    --line:#1e2733;
+    --ink:#e7edf5;
+    --muted:#7e8a9a;
+    --a:#ff9d3c;        /* dòng A (trái -> phải) */
+    --a-dim:#5a3f1f;
+    --b:#39c6e6;        /* dòng B (trên -> xuống) */
+    --b-dim:#1d4a57;
+    --acc:#a7f070;      /* accumulator */
+    --active:#86e57f;
+    --glow:rgba(134,229,127,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:
+    radial-gradient(1200px 700px at 80% -10%, #15202e 0%, transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, #18130c 0%, transparent 55%),
+    var(--bg);
+    color:var(--ink);font-family:'Archivo',sans-serif;}
+  body{padding:28px 22px 60px;min-height:100vh;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  header h1{font-family:'Syne',sans-serif;font-weight:800;letter-spacing:-.02em;
+    font-size:clamp(26px,4vw,40px);margin:0 0 4px;line-height:1.02;}
+  header h1 .os{color:var(--a);}
+  header p{color:var(--muted);margin:0;max-width:62ch;font-size:14.5px;line-height:1.5;}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 22px;font-size:12.5px;
+    font-family:'JetBrains Mono',monospace;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block;}
+
+  .grid-main{display:grid;grid-template-columns:1fr;gap:22px;}
+  @media(min-width:880px){.grid-main{grid-template-columns:1.55fr 1fr;align-items:start;}}
+
+  .panel{background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:16px;padding:18px 18px 20px;}
+  .panel h2{font-family:'Syne',sans-serif;font-size:13px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 16px;font-weight:700;}
+
+  /* ---- systolic array ---- */
+  .arena{display:grid;justify-content:center;}
+  .array-grid{display:grid;gap:10px;}
+  .cell, .feed{border-radius:11px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
+    position:relative;transition:all .25s ease;}
+  .pe{width:84px;height:84px;background:#0d1119;border:1px solid var(--line);}
+  .pe .acc{font-size:21px;font-weight:700;color:var(--acc);line-height:1;}
+  .pe .acclbl{font-size:8.5px;color:var(--muted);letter-spacing:.1em;margin-top:2px;}
+  .pe .op{font-size:10px;color:var(--muted);margin-top:5px;height:12px;}
+  .pe .ain{position:absolute;left:5px;top:50%;transform:translateY(-50%);
+    font-size:11px;color:var(--a);opacity:.25;font-weight:700;}
+  .pe .bin{position:absolute;top:4px;left:50%;transform:translateX(-50%);
+    font-size:11px;color:var(--b);opacity:.25;font-weight:700;}
+  .pe.live-a .ain{opacity:1;} .pe.live-b .bin{opacity:1;}
+  .pe.active{border-color:var(--active);background:#0f1a13;
+    box-shadow:0 0 0 1px var(--glow),0 0 22px var(--glow);}
+  .pe.active .op{color:var(--active);}
+
+  .feed{width:84px;height:40px;font-size:15px;font-weight:700;opacity:.35;
+    border:1px dashed var(--line);}
+  .feed.on{opacity:1;}
+  .feed.a{color:var(--a);border-color:var(--a-dim);background:#160f06;}
+  .feed.b{color:var(--b);border-color:var(--b-dim);background:#06151a;}
+  .feed.empty{visibility:hidden;}
+  .corner{width:84px;height:40px;}
+  .axis{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
+    letter-spacing:.12em;}
+
+  /* ---- controls ---- */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px;}
+  button{font-family:'JetBrains Mono',monospace;font-weight:700;cursor:pointer;
+    border:1px solid var(--line);background:#0f141d;color:var(--ink);
+    padding:9px 14px;border-radius:9px;font-size:13px;transition:.15s;}
+  button:hover{border-color:var(--a);color:var(--a);}
+  button:disabled{opacity:.35;cursor:default;border-color:var(--line);color:var(--muted);}
+  button.play{background:var(--a);color:#1a1205;border-color:var(--a);min-width:96px;}
+  button.play:hover{filter:brightness(1.08);color:#1a1205;}
+  .slider-row{display:flex;align-items:center;gap:12px;margin-top:16px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+  input[type=range]{flex:1;accent-color:var(--a);height:4px;}
+  .cyc{font-size:13px;color:var(--ink);min-width:128px;}
+  .cyc b{color:var(--a);}
+
+  /* ---- side panel ---- */
+  .mats{display:flex;flex-direction:column;gap:18px;}
+  .mat-title{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);
+    margin-bottom:8px;}
+  .mat-title b{font-weight:700;}
+  .matrix{display:inline-grid;gap:4px;}
+  .mc{width:34px;height:30px;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:13px;border-radius:6px;
+    background:#0d1119;border:1px solid var(--line);transition:.2s;}
+  .mc.feedA{border-color:var(--a);color:var(--a);box-shadow:0 0 12px rgba(255,157,60,.25);}
+  .mc.feedB{border-color:var(--b);color:var(--b);box-shadow:0 0 12px rgba(57,198,230,.25);}
+  .mc.cval{color:var(--acc);}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+  .stat{background:#0d1119;border:1px solid var(--line);border-radius:10px;padding:11px 12px;}
+  .stat .k{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+    font-family:'JetBrains Mono',monospace;}
+  .stat .v{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;margin-top:3px;}
+  .stat .v.a{color:var(--a);}.stat .v.g{color:var(--active);}.stat .v.b{color:var(--b);}
+
+  .cfg{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+  .cfg label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+    display:flex;flex-direction:column;gap:5px;}
+  .cfg input{width:60px;background:#0d1119;border:1px solid var(--line);color:var(--ink);
+    border-radius:7px;padding:7px 9px;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:18px;
+    border-top:1px solid var(--line);padding-top:14px;}
+  .note code{background:#0d1119;border:1px solid var(--line);padding:1px 6px;border-radius:5px;
+    font-family:'JetBrains Mono',monospace;color:var(--a);font-size:11.5px;}
+  .ok{color:var(--active);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Systolic Array · <span class="os">output-stationary</span></h1>
+    <p>Mô phỏng đúng theo code: accumulator nằm yên trong mỗi PE, ma trận <b style="color:var(--a)">A</b> bơm vào từ trái (chảy sang phải), <b style="color:var(--b)">B</b> bơm vào từ trên (chảy xuống dưới). Dữ liệu được nạp lệch (skew) nên các PE bắt đầu tính lệch pha nhau như một con sóng chéo.</p>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--a)"></i> A → chảy sang phải</span>
+    <span><i class="dot" style="background:var(--b)"></i> B → chảy xuống dưới</span>
+    <span><i class="dot" style="background:var(--acc)"></i> accumulator (= C đang tính)</span>
+    <span><i class="dot" style="background:var(--active)"></i> PE active (MAC trong cycle này)</span>
+  </div>
+
+  <div class="cfg">
+    <label>rows<input id="cfgR" type="number" min="1" max="5" value="3"></label>
+    <label>cols<input id="cfgC" type="number" min="1" max="5" value="3"></label>
+    <label>K (chiều chung)<input id="cfgK" type="number" min="1" max="6" value="3"></label>
+    <button id="randBtn">↻ random A,B</button>
+    <button id="rebuildBtn">áp dụng</button>
+  </div>
+
+  <div class="grid-main">
+    <!-- ARRAY -->
+    <div class="panel">
+      <h2>Mảng PE</h2>
+      <div class="arena"><div id="arrayGrid" class="array-grid"></div></div>
+      <div class="controls">
+        <button id="prevBtn">‹ Prev</button>
+        <button id="playBtn" class="play">▶ Play</button>
+        <button id="nextBtn">Next ›</button>
+        <button id="resetBtn">⟲ Reset</button>
+      </div>
+      <div class="slider-row">
+        <span class="cyc">cycle <b id="cycNow">0</b> / <span id="cycTot">0</span></span>
+        <input id="slider" type="range" min="0" max="0" value="0">
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="panel">
+      <h2>Dữ liệu &amp; thống kê</h2>
+      <div class="mats">
+        <div>
+          <div class="mat-title"><b style="color:var(--a)">A</b> [rows × K] — ô sáng = đang nạp ở cycle này</div>
+          <div id="matA" class="matrix"></div>
+        </div>
+        <div>
+          <div class="mat-title"><b style="color:var(--b)">B</b> [K × cols]</div>
+          <div id="matB" class="matrix"></div>
+        </div>
+        <div>
+          <div class="mat-title"><b style="color:var(--acc)">C = A·B</b> — accumulator hiện tại <span id="cstatus" class="ok"></span></div>
+          <div id="matC" class="matrix"></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">MAC active / cycle</div><div class="v a" id="sActive">0</div></div>
+        <div class="stat"><div class="k">Tổng MAC</div><div class="v g" id="sTotal">0</div></div>
+        <div class="stat"><div class="k">Tổng cycle</div><div class="v b" id="sCyc">0</div></div>
+        <div class="stat"><div class="k">PE utilization</div><div class="v" id="sUtil">0%</div></div>
+      </div>
+      <div class="note">
+        Tổng số cycle = <code>K + rows + cols − 2</code>. Ở cycle <code>t</code>, hàng <code>i</code> nạp phần tử <code>A[i, t−i]</code> và cột <code>j</code> nạp <code>B[t−j, j]</code> → chính là độ lệch (skew) tạo nên mặt sóng chéo. Mỗi cycle một PE làm: <code>acc += a_in × b_in</code> rồi đẩy <code>a,b</code> cho hàng xóm.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== mô phỏng (port 1:1 từ code Python) ======
+function simulate(A, B, rows, cols){
+  const K = A[0].length;
+  const pes = [];
+  for(let i=0;i<rows;i++){pes.push([]);for(let j=0;j<cols;j++)pes[i].push({acc:0,a_in:0,b_in:0,a_out:0,b_out:0});}
+  const total = K + rows + cols - 2;
+  const frames = [];
+  // frame 0: trạng thái ban đầu (chưa chạy)
+  frames.push(makeFrame(pes,rows,cols, Array(rows).fill(null), Array(cols).fill(null), 0, 0, -1));
+  let totalMacs = 0;
+  for(let t=0;t<total;t++){
+    const aInj=[]; for(let i=0;i<rows;i++){const k=t-i; aInj.push((0<=k&&k<K)?A[i][k]:null);}
+    const bInj=[]; for(let j=0;j<cols;j++){const k=t-j; bInj.push((0<=k&&k<K)?B[k][j]:null);}
+    // Phase 1: lan truyền
+    for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
+      const pe=pes[i][j];
+      pe.a_in = (j===0) ? (aInj[i]!==null?aInj[i]:0) : pes[i][j-1].a_out;
+      pe.b_in = (i===0) ? (bInj[j]!==null?bInj[j]:0) : pes[i-1][j].b_out;
+    }
+    // Phase 2: compute đồng thời
+    let active=0;
+    for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
+      const pe=pes[i][j];
+      if(pe.a_in!==0||pe.b_in!==0) active++;
+      pe.acc += pe.a_in*pe.b_in;
+      pe.a_out=pe.a_in; pe.b_out=pe.b_in;
+    }
+    totalMacs += active;
+    frames.push(makeFrame(pes,rows,cols,aInj,bInj,active,totalMacs,t));
+  }
+  const C=[];for(let i=0;i<rows;i++){C.push([]);for(let j=0;j<cols;j++)C[i].push(pes[i][j].acc);}
+  return {frames,total,K,C};
+}
+function makeFrame(pes,rows,cols,aInj,bInj,active,totalMacs,t){
+  const grid=[];
+  for(let i=0;i<rows;i++){grid.push([]);for(let j=0;j<cols;j++){const p=pes[i][j];
+    grid[i].push({a:p.a_in,b:p.b_in,acc:p.acc,active:(p.a_in!==0||p.b_in!==0)});}}
+  return {grid,aInj:[...aInj],bInj:[...bInj],active,totalMacs,t};
+}
+function fmt(x){ if(x===0) return '0'; const r=Math.round(x*100)/100; return Number.isInteger(r)?String(r):r.toFixed(2); }
+
+// ====== state ======
+let A,B,rows,cols,K,sim,cur=0,timer=null;
+
+function buildMatrices(r,c,k){
+  A=[];for(let i=0;i<r;i++){A.push([]);for(let j=0;j<k;j++)A[i].push(0);}
+  B=[];for(let i=0;i<k;i++){B.push([]);for(let j=0;j<c;j++)B[i].push(0);}
+  // ví dụ mặc định đẹp khi đúng 3×3×3
+  if(r===3&&c===3&&k===3){
+    A=[[1,2,3],[4,5,6],[7,8,9]];
+    B=[[1,2,1],[0,1,0],[2,0,1]];
+  } else { randomize(r,c,k); }
+}
+function randomize(r,c,k){
+  A=[];for(let i=0;i<r;i++){A.push([]);for(let j=0;j<k;j++)A[i].push(Math.floor(Math.random()*4));}
+  B=[];for(let i=0;i<k;i++){B.push([]);for(let j=0;j<c;j++)B[i].push(Math.floor(Math.random()*4));}
+}
+
+function rebuild(){
+  rows=Math.max(1,Math.min(5,+document.getElementById('cfgR').value||3));
+  cols=Math.max(1,Math.min(5,+document.getElementById('cfgC').value||3));
+  K=Math.max(1,Math.min(6,+document.getElementById('cfgK').value||3));
+  document.getElementById('cfgR').value=rows;
+  document.getElementById('cfgC').value=cols;
+  document.getElementById('cfgK').value=K;
+  if(!A || rows!==A.length || cols!==B[0].length || K!==A[0].length) buildMatrices(rows,cols,K);
+  sim=simulate(A,B,rows,cols,K);
+  cur=0; stop();
+  const sl=document.getElementById('slider'); sl.max=sim.total; sl.value=0;
+  document.getElementById('cycTot').textContent=sim.total;
+  document.getElementById('sCyc').textContent=sim.total;
+  buildArrayDom(); buildMatDom(); render();
+}
+
+// ---- build static DOM for the PE grid ----
+function buildArrayDom(){
+  const g=document.getElementById('arrayGrid');
+  g.style.gridTemplateColumns=`44px repeat(${cols},84px)`;
+  g.innerHTML='';
+  // top-left corner
+  const corner=document.createElement('div'); corner.className='corner';
+  corner.style.cssText='display:flex;align-items:flex-end;justify-content:center;';
+  corner.innerHTML='<span class="axis">B↓ / A→</span>';
+  g.appendChild(corner);
+  // top feed row (B)
+  for(let j=0;j<cols;j++){const f=document.createElement('div');f.className='feed b';f.id='bf'+j;g.appendChild(f);}
+  // rows
+  for(let i=0;i<rows;i++){
+    const af=document.createElement('div');af.className='feed a';af.id='af'+i;
+    af.style.height='84px';g.appendChild(af);
+    for(let j=0;j<cols;j++){
+      const c=document.createElement('div');c.className='cell pe';c.id='pe'+i+'_'+j;
+      c.innerHTML=`<span class="bin"></span><span class="ain"></span>
+        <span class="acc">0</span><span class="acclbl">acc</span><span class="op"></span>`;
+      g.appendChild(c);
+    }
+  }
+}
+function buildMatDom(){
+  const mA=document.getElementById('matA'),mB=document.getElementById('matB'),mC=document.getElementById('matC');
+  mA.style.gridTemplateColumns=`repeat(${K},34px)`;
+  mB.style.gridTemplateColumns=`repeat(${cols},34px)`;
+  mC.style.gridTemplateColumns=`repeat(${cols},34px)`;
+  mA.innerHTML='';mB.innerHTML='';mC.innerHTML='';
+  for(let i=0;i<rows;i++)for(let j=0;j<K;j++){const d=document.createElement('div');d.className='mc';d.id='a'+i+'_'+j;d.textContent=A[i][j];mA.appendChild(d);}
+  for(let i=0;i<K;i++)for(let j=0;j<cols;j++){const d=document.createElement('div');d.className='mc';d.id='b'+i+'_'+j;d.textContent=B[i][j];mB.appendChild(d);}
+  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const d=document.createElement('div');d.className='mc cval';d.id='c'+i+'_'+j;d.textContent='0';mC.appendChild(d);}
+}
+
+// ---- render a frame ----
+function render(){
+  const f=sim.frames[cur];
+  document.getElementById('cycNow').textContent= f.t<0?0:f.t+1;
+  document.getElementById('slider').value=cur;
+  // PEs
+  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
+    const p=f.grid[i][j], el=document.getElementById('pe'+i+'_'+j);
+    el.querySelector('.acc').textContent=fmt(p.acc);
+    const ain=el.querySelector('.ain'), bin=el.querySelector('.bin'), op=el.querySelector('.op');
+    ain.textContent=fmt(p.a); bin.textContent=fmt(p.b);
+    el.classList.toggle('live-a', p.a!==0);
+    el.classList.toggle('live-b', p.b!==0);
+    el.classList.toggle('active', p.active);
+    op.textContent = p.active ? `+${fmt(p.a*p.b)}` : '';
+  }
+  // feed lanes
+  for(let i=0;i<rows;i++){const el=document.getElementById('af'+i);
+    el.textContent = f.aInj[i]!==null?fmt(f.aInj[i]):'·'; el.classList.toggle('on',f.aInj[i]!==null);}
+  for(let j=0;j<cols;j++){const el=document.getElementById('bf'+j);
+    el.textContent = f.bInj[j]!==null?fmt(f.bInj[j]):'·'; el.classList.toggle('on',f.bInj[j]!==null);}
+  // matrices highlight (skew feeding) + C
+  for(let i=0;i<rows;i++)for(let j=0;j<K;j++)document.getElementById('a'+i+'_'+j).classList.remove('feedA');
+  for(let i=0;i<K;i++)for(let j=0;j<cols;j++)document.getElementById('b'+i+'_'+j).classList.remove('feedB');
+  if(f.t>=0){
+    for(let i=0;i<rows;i++){const k=f.t-i; if(k>=0&&k<K)document.getElementById('a'+i+'_'+k).classList.add('feedA');}
+    for(let j=0;j<cols;j++){const k=f.t-j; if(k>=0&&k<K)document.getElementById('b'+k+'_'+j).classList.add('feedB');}
+  }
+  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++)document.getElementById('c'+i+'_'+j).textContent=fmt(f.grid[i][j].acc);
+  // stats
+  document.getElementById('sActive').textContent=f.active;
+  document.getElementById('sTotal').textContent=f.totalMacs;
+  const util=Math.round(f.active/(rows*cols)*100);
+  document.getElementById('sUtil').textContent=util+'%';
+  // done check
+  document.getElementById('cstatus').textContent = (cur===sim.total) ? '✓ hoàn tất = A·B' : '';
+  // button states
+  document.getElementById('prevBtn').disabled = cur===0;
+  document.getElementById('nextBtn').disabled = cur===sim.total;
+}
+
+// ---- controls ----
+function next(){ if(cur<sim.total){cur++;render();} else stop(); }
+function prev(){ if(cur>0){cur--;render();} }
+function play(){ if(cur>=sim.total) cur=0; timer=setInterval(next,750);
+  document.getElementById('playBtn').textContent='❚❚ Pause'; }
+function stop(){ if(timer){clearInterval(timer);timer=null;}
+  document.getElementById('playBtn').textContent='▶ Play'; }
+document.getElementById('playBtn').onclick=()=>{ timer?stop():play(); };
+document.getElementById('nextBtn').onclick=()=>{stop();next();};
+document.getElementById('prevBtn').onclick=()=>{stop();prev();};
+document.getElementById('resetBtn').onclick=()=>{stop();cur=0;render();};
+document.getElementById('slider').oninput=e=>{stop();cur=+e.target.value;render();};
+document.getElementById('rebuildBtn').onclick=()=>{A=null;rebuild();};
+document.getElementById('randBtn').onclick=()=>{
+  rows=+document.getElementById('cfgR').value;cols=+document.getElementById('cfgC').value;K=+document.getElementById('cfgK').value;
+  randomize(rows,cols,K);rebuild();
+};
+
+rebuild();
+</script>
+</body>
+</html>
