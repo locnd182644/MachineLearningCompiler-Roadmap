@@ -99,26 +99,26 @@ Sơ đồ dưới đây thể hiện luồng xử lý bên trong một bước l
 
 ```mermaid
 graph TD
-    subgraph Naive_Flow [Thuật toán Naive]
+    subgraph Naive_Flow ["Thuật toán Naive"]
         direction TB
-        N_Start([Bắt đầu tính C[i, j]]) --> N_Init[sum = 0]
-        N_Init --> N_Loop{Lặp k từ 0 đến N-1}
-        N_Loop -- k --> N_Calc[sum += A[i, k] * B[k, j]]
+        N_Start(["Bắt đầu tính C[i, j]"]) --> N_Init["sum = 0"]
+        N_Init --> N_Loop{"Lặp k từ 0 đến N-1"}
+        N_Loop -- k --> N_Calc["sum += A[i, k] * B[k, j]"]
         N_Calc --> N_Loop
-        N_Loop -- Hết k --> N_Store[C[i, j] = sum]
-        N_Store --> N_End([Hoàn thành 1 phần tử C[i, j]])
+        N_Loop -- Hết k --> N_Store["C[i, j] = sum"]
+        N_Store --> N_End(["Hoàn thành 1 phần tử C[i, j]"])
     end
 
-    subgraph AVX_Flow [Thuật toán AVX2 + FMA]
+    subgraph AVX_Flow ["Thuật toán AVX2 + FMA"]
         direction TB
-        A_Start([Bắt đầu tính C[i, j ... j+7]]) --> A_Init[acc = vector_zero]
-        A_Init --> A_Loop{Lặp k từ 0 đến N-1}
-        A_Loop -- k --> A_Broad[Broadcast A[i, k] -> vector a]
-        A_Broad --> A_Load[Load B[k, j ... j+7] -> vector b]
-        A_Load --> A_FMA[acc = FMA(a, b, acc)]
+        A_Start(["Bắt đầu tính C[i, j ... j+7]"]) --> A_Init["acc = vector_zero"]
+        A_Init --> A_Loop{"Lặp k từ 0 đến N-1"}
+        A_Loop -- k --> A_Broad["Broadcast A[i, k] -> vector a"]
+        A_Broad --> A_Load["Load B[k, j ... j+7] -> vector b"]
+        A_Load --> A_FMA["acc = FMA(a, b, acc)"]
         A_FMA --> A_Loop
-        A_Loop -- Hết k --> A_Store[Ghi acc vào C[i, j ... j+7]]
-        A_Store --> A_End([Hoàn thành 8 phần tử của C])
+        A_Loop -- Hết k --> A_Store["Ghi acc vào C[i, j ... j+7]"]
+        A_Store --> A_End(["Hoàn thành 8 phần tử của C"])
     end
 ```
 
