@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cuda_runtime.h>
+#include <cublas_v2.h>
 
 #define CHECK(x) do { cudaError_t e = (x); \
     if (e != cudaSuccess) { printf("CUDA error %s:%d: %s\n", __FILE__, __LINE__, \
@@ -71,6 +72,14 @@ static void launch_tiled(float* C, const float* A, const float* B, int N) {
     matmul_tiled<<<grid, block>>>(C, A, B, N);
 }
 
+static cublasHandle_t cublas_handle;
+static void launch_cublas(float* C, const float* A, const float* B, int N) {
+    float alpha = 1.0f;
+    float beta = 0.0f;
+    // cuBLAS is column-major: C = A * B row-major layout is computed as B * A in column-major
+    cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, N, N, N, &alpha, B, N, A, N, &beta, C, N);
+}
+
 int main(int argc, char** argv) {
     const int N = 2048;
     const char* which = argc > 1 ? argv[1] : "all";
@@ -99,13 +108,10 @@ int main(int argc, char** argv) {
         printf("V2 Tiled : %.2f ms, %.0f GFLOPS\n", ms, gflop / (ms / 1e3));
     }
     if (!strcmp(which, "cublas") || !strcmp(which, "all")) {
-        // TODO (bài tập): V3 — gọi cuBLAS làm mốc peak.
-        //  1. #include <cublas_v2.h>  và link cublas trong CMakeLists.txt
-        //  2. cublasCreate(&handle)
-        //  3. cublasSgemm(...) — chú ý cuBLAS dùng column-major:
-        //     để tính C = A*B row-major, gọi sgemm với B,A đảo thứ tự.
-        //  4. Bench giống các version trên, in GFLOPS.
-        printf("V3 cuBLAS: TODO — xem comment trong matmul.cu\n");
+        cublasCreate(&cublas_handle);
+        double ms = bench_kernel(launch_cublas, dC, dA, dB, N);
+        printf("V3 cuBLAS: %.2f ms, %.0f GFLOPS\n", ms, gflop / (ms / 1e3));
+        cublasDestroy(cublas_handle);
     }
 
     cudaFree(dA); cudaFree(dB); cudaFree(dC);

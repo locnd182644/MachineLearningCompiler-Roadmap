@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mô phỏng CUDA Tiled MatMul</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2d3748;
+    --txt:#e6edf3; --muted:#8b949e;
+    --A:#3b82f6; --A-soft:#1e3a5f; --A-dim:#16263d;
+    --B:#f59e0b; --B-soft:#5a3d0a; --B-dim:#3a2806;
+    --C:#a78bfa; --C-soft:#3b2f63; --C-dim:#261d40;
+    --hot:#34d399; --code-hi:#264f3a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    padding:18px;line-height:1.5;
+  }
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .grid-top{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;font-weight:600}
+
+  /* code */
+  pre{margin:0;font-family:'JetBrains Mono','Consolas',monospace;font-size:12px;line-height:1.7;white-space:pre;overflow-x:auto}
+  .ln{display:block;padding:0 6px;border-radius:4px;transition:background .2s}
+  .ln.hi{background:var(--code-hi);box-shadow:inset 3px 0 0 var(--hot)}
+  .kw{color:#ff7b72}.ty{color:#79c0ff}.fn{color:#d2a8ff}.cm{color:#8b949e}.nu{color:#79c0ff}.va{color:#e6edf3}
+
+  /* matrices */
+  .mats{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .matblock{text-align:center}
+  .matlbl{font-size:13px;font-weight:700;margin-bottom:6px}
+  table.mat{border-collapse:collapse;margin:0 auto}
+  table.mat td{
+    width:26px;height:26px;text-align:center;font-size:11px;
+    border:1px solid #283041;color:#7d8590;background:#11161f;
+    font-family:monospace;transition:all .18s;
+  }
+  /* highlight states */
+  .A .out{background:var(--A-dim);color:#cdd9e5}
+  .A .ld{background:var(--A);color:#04101f;font-weight:700;box-shadow:inset 0 0 0 2px #93c5fd}
+  .B .out{background:var(--B-dim);color:#cdd9e5}
+  .B .ld{background:var(--B);color:#1a1203;font-weight:700;box-shadow:inset 0 0 0 2px #fcd34d}
+  .C .blk{background:var(--C-dim);color:#cdd9e5}
+  .C .cell{background:var(--C);color:#1a1340;font-weight:700;box-shadow:inset 0 0 0 2px #c4b5fd}
+  td.trace{outline:2px solid var(--hot);outline-offset:-2px;color:#021;font-weight:700;background:var(--hot)!important}
+
+  .times{font-size:14px;color:var(--muted);align-self:center}
+
+  /* shared mem */
+  .shared{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+  .smwrap{text-align:center}
+  table.sm td{width:30px;height:30px;font-size:12px;background:#0f141c;border:1px dashed #3a4658;color:#586575;font-family:monospace;text-align:center;transition:all .2s}
+  table.sm.As td.f{background:var(--A);color:#04101f;font-weight:700;border-style:solid;border-color:#93c5fd}
+  table.sm.Bs td.f{background:var(--B);color:#1a1203;font-weight:700;border-style:solid;border-color:#fcd34d}
+  table.sm td.k{outline:2px solid var(--hot);outline-offset:-2px}
+
+  /* controls */
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;justify-content:center}
+  button{
+    background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;transition:.15s
+  }
+  button:hover{border-color:var(--hot);color:var(--hot)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button.primary{background:var(--hot);color:#04130c;border-color:var(--hot)}
+  .seg{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+  .seg select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:13px}
+
+  .stepbar{display:flex;align-items:center;gap:10px;justify-content:center;margin:10px 0 2px}
+  .pill{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+  .pill.on{background:var(--code-hi);border-color:var(--hot);color:var(--hot);font-weight:700}
+
+  .explain{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--hot);
+    border-radius:8px;padding:12px 14px;margin-top:12px;font-size:14px;min-height:54px}
+  .explain b{color:var(--hot)}
+  .mono{font-family:monospace;color:#79c0ff}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px;justify-content:center}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:3px;display:inline-block}
+  .trace-panel{font-family:monospace;font-size:12px;color:#9aa7b4;margin-top:8px;text-align:center;min-height:18px}
+  .trace-panel b{color:var(--hot)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mô phỏng: Nhân ma trận có Tiling bằng Shared Memory (CUDA)</h1>
+  <div class="sub">Ví dụ thu nhỏ để dễ nhìn: <b>N = 8</b>, <b>TILE = 4</b> → lưới <b>2×2 block</b>, mỗi block 4×4 thread, vòng lặp <span class="mono">t</span> chạy <b>N/TILE = 2</b> lần. (Code gốc dùng TILE=16, N tuỳ ý.)</div>
+
+  <div class="grid-top">
+    <!-- LEFT: matrices + shared mem -->
+    <div class="card">
+      <h2>Bộ nhớ toàn cục (Global) & Shared Memory</h2>
+      <div class="mats">
+        <div class="matblock"><div class="matlbl" style="color:var(--A)">A (8×8)</div><div id="matA" class="A"></div></div>
+        <div class="times">×</div>
+        <div class="matblock"><div class="matlbl" style="color:var(--B)">B (8×8)</div><div id="matB" class="B"></div></div>
+        <div class="times">=</div>
+        <div class="matblock"><div class="matlbl" style="color:var(--C)">C (8×8)</div><div id="matC" class="C"></div></div>
+      </div>
+
+      <h2 style="margin-top:18px">Shared memory của block đang chạy</h2>
+      <div class="shared">
+        <div class="smwrap"><div class="matlbl" style="color:var(--A)">As[4][4]</div><div id="smAs"></div></div>
+        <div class="smwrap"><div class="matlbl" style="color:var(--B)">Bs[4][4]</div><div id="smBs"></div></div>
+      </div>
+      <div class="trace-panel" id="tracePanel"></div>
+
+      <div class="legend">
+        <span><i class="sw" style="background:var(--A)"></i>tile A đang nạp</span>
+        <span><i class="sw" style="background:var(--B)"></i>tile B đang nạp</span>
+        <span><i class="sw" style="background:var(--C)"></i>ô C của block</span>
+        <span><i class="sw" style="background:var(--hot)"></i>thread đang theo dõi</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: code -->
+    <div class="card">
+      <h2>Mã nguồn — dòng đang thực thi được tô sáng</h2>
+      <pre id="code"></pre>
+    </div>
+  </div>
+
+  <!-- controls -->
+  <div class="card" style="margin-top:16px">
+    <div class="stepbar" id="phases"></div>
+    <div class="explain" id="explain"></div>
+    <div class="controls">
+      <div class="seg">Block&nbsp;
+        <select id="selBlock">
+          <option value="0,0">(0,0) ↖</option>
+          <option value="0,1">(0,1) ↗</option>
+          <option value="1,0">(1,0) ↙</option>
+          <option value="1,1">(1,1) ↘</option>
+        </select>
+      </div>
+      <div class="seg">Thread (ty,tx)&nbsp;
+        <select id="selThread"></select>
+      </div>
+      <span style="flex:1"></span>
+      <button id="btnReset">⟲ Đầu</button>
+      <button id="btnPrev">‹ Lùi</button>
+      <button id="btnNext" class="primary">Tiến ›</button>
+      <button id="btnAuto">▶ Tự chạy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const N=8, TILE=4, NB=N/TILE; // 2 blocks per dim, 2 loop iters
+// ----- data -----
+const A=[],B=[],C=[];
+for(let i=0;i<N;i++){A[i]=[];B[i]=[];C[i]=[];for(let j=0;j<N;j++){
+  A[i][j]=((i+j)%5)+1;
+  B[i][j]=((i*2+j)%5)+1;
+  C[i][j]=0;
+}}
+for(let i=0;i<N;i++)for(let j=0;j<N;j++){let s=0;for(let k=0;k<N;k++)s+=A[i][k]*B[k][j];C[i][j]=s;}
+
+// ----- state -----
+let blockRow=0, blockCol=0, tY=0, tX=0;
+// step list built per (block): sequence of {t, phase, k?}
+// phases: load, sync1, compute(k=0..TILE-1), sync2 ... then write
+let steps=[], idx=0, timer=null;
+
+function buildSteps(){
+  steps=[];
+  steps.push({phase:'start'});
+  for(let t=0;t<NB;t++){
+    steps.push({t,phase:'load'});
+    steps.push({t,phase:'sync1'});
+    for(let k=0;k<TILE;k++) steps.push({t,phase:'compute',k});
+    steps.push({t,phase:'sync2'});
+  }
+  steps.push({phase:'write'});
+  idx=0;
+}
+
+// ----- code render with line highlight -----
+const codeLines=[
+ {t:'<span class="cm">// Shared memory tiling</span>',ph:[]},
+ {t:'<span class="kw">#define</span> TILE <span class="nu">16</span>',ph:[]},
+ {t:'<span class="kw">__global__</span> <span class="ty">void</span> <span class="fn">matmul_tiled</span>(<span class="ty">float</span>* C, <span class="kw">const</span> <span class="ty">float</span>* A, <span class="kw">const</span> <span class="ty">float</span>* B, <span class="ty">int</span> N) {',ph:['start']},
+ {t:'  <span class="kw">__shared__</span> <span class="ty">float</span> As[TILE][TILE];',ph:['start']},
+ {t:'  <span class="kw">__shared__</span> <span class="ty">float</span> Bs[TILE][TILE];',ph:['start']},
+ {t:'  <span class="ty">int</span> row = blockIdx.y*TILE + threadIdx.y;',ph:['start']},
+ {t:'  <span class="ty">int</span> col = blockIdx.x*TILE + threadIdx.x;',ph:['start']},
+ {t:'  <span class="ty">float</span> sum = <span class="nu">0</span>;',ph:['start']},
+ {t:'  <span class="kw">for</span> (<span class="ty">int</span> t=<span class="nu">0</span>; t&lt;N/TILE; t++) {',ph:['load']},
+ {t:'    As[ty][tx] = A[row*N + t*TILE + tx];',ph:['load']},
+ {t:'    Bs[ty][tx] = B[(t*TILE + ty)*N + col];',ph:['load']},
+ {t:'    <span class="fn">__syncthreads</span>();',ph:['sync1']},
+ {t:'    <span class="kw">for</span> (<span class="ty">int</span> k=<span class="nu">0</span>; k&lt;TILE; k++)',ph:['compute']},
+ {t:'      sum += As[ty][k] * Bs[k][tx];',ph:['compute']},
+ {t:'    <span class="fn">__syncthreads</span>();',ph:['sync2']},
+ {t:'  }',ph:['load','sync2']},
+ {t:'  C[row*N + col] = sum;',ph:['write']},
+ {t:'}',ph:['write']},
+];
+function renderCode(phase){
+  document.getElementById('code').innerHTML=codeLines.map(l=>{
+    const hi=l.ph.includes(phase)?' hi':'';
+    return `<span class="ln${hi}">${l.t}</span>`;
+  }).join('');
+}
+
+// ----- matrix render -----
+function tableHTML(M){
+  let h='<table class="mat">';
+  for(let i=0;i<N;i++){h+='<tr>';for(let j=0;j<N;j++)h+=`<td id="@-${i}-${j}">${M[i][j]}</td>`;h+='</tr>';}
+  return h+'</table>';
+}
+function buildMats(){
+  document.getElementById('matA').innerHTML=tableHTML(A).replace(/@/g,'a');
+  document.getElementById('matB').innerHTML=tableHTML(B).replace(/@/g,'b');
+  // C shows blank until written
+  let h='<table class="mat">';
+  for(let i=0;i<N;i++){h+='<tr>';for(let j=0;j<N;j++)h+=`<td id="c-${i}-${j}"></td>`;h+='</tr>';}
+  document.getElementById('matC').innerHTML=h+'</table>';
+}
+function smHTML(id,cls){
+  let h=`<table class="sm ${cls}" id="${id}">`;
+  for(let i=0;i<TILE;i++){h+='<tr>';for(let j=0;j<TILE;j++)h+=`<td id="${id}-${i}-${j}"></td>`;h+='</tr>';}
+  return h+'</table>';
+}
+function buildSM(){
+  document.getElementById('smAs').innerHTML=smHTML('As','As');
+  document.getElementById('smBs').innerHTML=smHTML('Bs','Bs');
+}
+
+function cell(p,i,j){return document.getElementById(`${p}-${i}-${j}`);}
+
+// running shared-mem contents per loaded t
+let loadedT=-1;
+
+function clearHi(){
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    cell('a',i,j).className=''; cell('b',i,j).className='';
+    cell('c',i,j).className='';
+  }
+  for(let i=0;i<TILE;i++)for(let j=0;j<TILE;j++){
+    cell('As',i,j).className=''; cell('As',i,j).textContent='';
+    cell('Bs',i,j).className=''; cell('Bs',i,j).textContent='';
+  }
+}
+
+// persistent partial sums for traced thread across t
+let tracePartial=0, tracedRow=0, tracedCol=0;
+
+function render(){
+  const s=steps[idx];
+  renderCode(s.phase);
+  clearHi();
+  // phase pills
+  const order=['load','sync1','compute','sync2','write'];
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  if(order.includes(s.phase)) document.getElementById('pill-'+s.phase).classList.add('on');
+
+  tracedRow=blockRow*TILE+tY; tracedCol=blockCol*TILE+tX;
+  const baseR=blockRow*TILE, baseC=blockCol*TILE;
+
+  // Always mark the C output block (dim) + traced cell
+  for(let i=0;i<TILE;i++)for(let j=0;j<TILE;j++){
+    cell('c',baseR+i,baseC+j).className='blk';
+  }
+  cell('c',tracedRow,tracedCol).className='cell';
+
+  let exp='';
+  const t=s.t;
+
+  if(s.phase==='start'){
+    tracePartial=0;
+    exp=`Block <b>(${blockRow},${blockCol})</b> phụ trách ô <span class="mono">C[${baseR}..${baseR+3}][${baseC}..${baseC+3}]</span>. Mỗi thread tính <b>1 ô</b> của tile và giữ biến <span class="mono">sum=0</span>. Đang theo dõi thread <span class="mono">(ty=${tY}, tx=${tX})</span> → ô <span class="mono">C[${tracedRow}][${tracedCol}]</span>.`;
+    document.getElementById('tracePanel').innerHTML='';
+  }
+
+  if(s.phase==='load'){
+    // mark A tile: rows base.., cols t*TILE..
+    for(let i=0;i<TILE;i++)for(let j=0;j<TILE;j++){
+      cell('a',baseR+i, t*TILE+j).className='ld';
+      cell('b',t*TILE+i, baseC+j).className='ld';
+      // fill shared memory
+      cell('As',i,j).textContent=A[baseR+i][t*TILE+j]; cell('As',i,j).className='f';
+      cell('Bs',i,j).textContent=B[t*TILE+i][baseC+j]; cell('Bs',i,j).className='f';
+    }
+    loadedT=t;
+    // trace highlight
+    for(let j=0;j<TILE;j++) cell('a',tracedRow,t*TILE+j).classList.add('trace');
+    for(let i=0;i<TILE;i++) cell('b',t*TILE+i,tracedCol).classList.add('trace');
+    exp=`<b>Vòng t=${t} — NẠP.</b> Cả ${TILE}×${TILE}=16 thread <b>song song</b> copy một tile của A và một tile của B từ global → shared memory. Mỗi thread chép đúng 1 phần tử: <span class="mono">As[ty][tx]=A[row][${t}*4+tx]</span>, <span class="mono">Bs[ty][tx]=B[${t}*4+ty][col]</span>.`;
+  }
+
+  if(s.phase==='sync1'){
+    fillSM(t);
+    exp=`<b>__syncthreads() — RÀO CHẮN.</b> Tất cả thread trong block <b>chờ nhau</b> tại đây. Đảm bảo As và Bs đã nạp <b>đầy đủ</b> trước khi bất kỳ thread nào bắt đầu tính. Thiếu rào này → đọc nhầm dữ liệu chưa kịp ghi.`;
+  }
+
+  if(s.phase==='compute'){
+    fillSM(t);
+    const k=s.k;
+    // highlight k-th element of traced thread's row in As and col in Bs
+    cell('As',tY,k).classList.add('k');
+    cell('Bs',k,tX).classList.add('k');
+    cell('a',tracedRow,t*TILE+k).classList.add('trace');
+    cell('b',t*TILE+k,tracedCol).classList.add('trace');
+    const av=A[tracedRow][t*TILE+k], bv=B[t*TILE+k][tracedCol];
+    tracePartial+=av*bv;
+    exp=`<b>Vòng t=${t} — TÍNH (k=${k}).</b> Tích luỹ từ shared memory (rất nhanh): <span class="mono">sum += As[ty][${k}]·Bs[${k}][tx]</span>. Dữ liệu dùng lại cho cả 16 thread → giảm mạnh truy cập global.`;
+    document.getElementById('tracePanel').innerHTML=`Thread (${tY},${tX}): sum += <b>${av}</b>·<b>${bv}</b> &nbsp;⇒&nbsp; sum = <b>${tracePartial}</b>`;
+  }
+
+  if(s.phase==='sync2'){
+    fillSM(t);
+    exp=`<b>__syncthreads() — RÀO CHẮN cuối vòng.</b> Chờ mọi thread tính xong tile này <b>trước khi</b> nạp đè tile của vòng <span class="mono">t=${t+1}</span> lên shared memory. Tránh ghi đè khi người khác còn đang đọc.`;
+    document.getElementById('tracePanel').innerHTML=`Sau vòng t=${t}: sum tích luỹ của thread (${tY},${tX}) = <b>${tracePartial}</b>`;
+  }
+
+  if(s.phase==='write'){
+    // write all C block
+    for(let i=0;i<TILE;i++)for(let j=0;j<TILE;j++){
+      const r=baseR+i,c=baseC+j;
+      cell('c',r,c).textContent=C[r][c]; cell('c',r,c).className='blk';
+    }
+    cell('c',tracedRow,tracedCol).textContent=C[tracedRow][tracedCol];
+    cell('c',tracedRow,tracedCol).className='cell';
+    exp=`<b>GHI KẾT QUẢ.</b> Sau khi duyệt hết các tile, mỗi thread ghi 1 lần: <span class="mono">C[row][col]=sum</span>. Thread (${tY},${tX}) ⇒ <span class="mono">C[${tracedRow}][${tracedCol}] = ${C[tracedRow][tracedCol]}</span> ✓`;
+    document.getElementById('tracePanel').innerHTML=`Tổng cuối: <b>${C[tracedRow][tracedCol]}</b> (khớp với phép nhân chuẩn)`;
+  }
+
+  document.getElementById('explain').innerHTML=exp;
+  // buttons
+  document.getElementById('btnPrev').disabled = idx===0;
+  document.getElementById('btnNext').disabled = idx===steps.length-1;
+}
+
+// fills shared mem display for tile t (used by phases after load)
+function fillSM(t){
+  const baseR=blockRow*TILE, baseC=blockCol*TILE;
+  for(let i=0;i<TILE;i++)for(let j=0;j<TILE;j++){
+    cell('As',i,j).textContent=A[baseR+i][t*TILE+j]; cell('As',i,j).className='f';
+    cell('Bs',i,j).textContent=B[t*TILE+i][baseC+j]; cell('Bs',i,j).className='f';
+  }
+}
+
+// ----- phases pills -----
+function buildPills(){
+  const names={load:'1· Nạp tile',sync1:'2· __syncthreads',compute:'3· Tính (k loop)',sync2:'4· __syncthreads',write:'5· Ghi C'};
+  document.getElementById('phases').innerHTML=Object.keys(names).map(k=>`<span class="pill" id="pill-${k}">${names[k]}</span>`).join('');
+}
+
+// ----- thread selector -----
+function buildThreadSel(){
+  const s=document.getElementById('selThread');
+  let h='';
+  for(let y=0;y<TILE;y++)for(let x=0;x<TILE;x++) h+=`<option value="${y},${x}">(${y},${x})</option>`;
+  s.innerHTML=h;
+}
+
+// ----- nav -----
+function go(d){ idx=Math.max(0,Math.min(steps.length-1,idx+d)); render(); }
+function reset(){ buildSteps(); buildMats(); buildSM(); tracePartial=0; render(); }
+
+document.getElementById('btnNext').onclick=()=>go(1);
+document.getElementById('btnPrev').onclick=()=>go(-1);
+document.getElementById('btnReset').onclick=()=>{stopAuto();reset();};
+document.getElementById('selBlock').onchange=e=>{stopAuto();[blockRow,blockCol]=e.target.value.split(',').map(Number);reset();};
+document.getElementById('selThread').onchange=e=>{[tY,tX]=e.target.value.split(',').map(Number);
+  // recompute tracePartial up to current idx
+  tracePartial=0;for(let z=0;z<=idx;z++){const st=steps[z];if(st.phase==='compute'){const r=blockRow*TILE+tY,c=blockCol*TILE+tX;tracePartial+=A[r][st.t*TILE+st.k]*B[st.t*TILE+st.k][c];}}
+  render();};
+
+function stopAuto(){if(timer){clearInterval(timer);timer=null;document.getElementById('btnAuto').textContent='▶ Tự chạy';}}
+document.getElementById('btnAuto').onclick=()=>{
+  if(timer){stopAuto();return;}
+  document.getElementById('btnAuto').textContent='⏸ Dừng';
+  timer=setInterval(()=>{ if(idx>=steps.length-1){stopAuto();return;} go(1); },900);
+};
+
+// init
+buildPills(); buildThreadSel(); reset();
+</script>
+</body>
+</html>
