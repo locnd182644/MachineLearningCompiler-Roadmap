@@ -30,8 +30,8 @@ python systolic_extend.py     # sau khi bạn cài đặt phần TODO
 
 ## Checklist output cuối tuần
 
-- [ ] `systolic_sim.py` chạy đúng (max error ~0), in utilization
-- [ ] `systolic_extend.py`: weight-stationary chạy đúng
-- [ ] Test matmul 4x4, 16x16, 64x64 (cần tiling)
-- [ ] Plot utilization có ramp-up/ramp-down
-- [ ] `analysis.md`: "vì sao TPU dùng systolic? 5 điểm so với GPU SIMT"
+- [x] `systolic_sim.py` chạy đúng (max error ~6.7e-16), in utilization 57.1%
+- [x] `systolic_extend.py`: weight-stationary chạy đúng (max error ~4.4e-16)
+- [x] Test matmul 4x4, 16x16, 64x64 (cần tiling) — cả 3 max error < 1e-13
+- [x] Plot utilization có ramp-up/ramp-down → `utilization.png`
+- [x] `analysis.md`: "vì sao TPU dùng systolic? 5 điểm so với GPU SIMT" + bảng 256³ + liên hệ HW-SW
