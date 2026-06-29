@@ -3,7 +3,7 @@
 > **Lộ trình tự học từ con số không đến Machine Learning Compiler Engineer cho AI accelerator chips (TPU/NPU/ASIC).**
 > Hành trình cá nhân, mở để bất kỳ ai cùng quan tâm tham khảo, fork, hoặc đồng hành.
 
-[![Status](https://img.shields.io/badge/status-in_progress-yellow)](./stage1_Accelerator/)
+[![Status](https://img.shields.io/badge/status-in_progress-yellow)](./stage1_Accelerator/week5-quantization)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 <!-- [![Language](https://img.shields.io/badge/lang-VN%2FEN-red)](https://github.com) -->
 
