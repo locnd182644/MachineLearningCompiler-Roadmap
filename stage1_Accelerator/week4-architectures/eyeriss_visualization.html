@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eyeriss — Row-Stationary Dataflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0f14;
+    --panel:#11161f;
+    --panel-2:#0e131b;
+    --line:#1e2733;
+    --ink:#e7edf5;
+    --muted:#7e8a9a;
+    --filt:#ff9d3c;       /* filter weight — stationary trong PE */
+    --filt-dim:#5a3f1f;
+    --inp:#39c6e6;        /* input activation — reuse theo chéo */
+    --inp-dim:#1d4a57;
+    --psum:#a7f070;       /* partial sum — accumulate theo chiều dọc */
+    --psum-dim:#3f5a26;
+    --active:#86e57f;
+    --glow:rgba(134,229,127,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:
+    radial-gradient(1200px 700px at 80% -10%, #15202e 0%, transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, #18130c 0%, transparent 55%),
+    var(--bg);
+    color:var(--ink);font-family:'Archivo',sans-serif;}
+  body{padding:28px 22px 60px;min-height:100vh;}
+  .wrap{max-width:1140px;margin:0 auto;}
+  header h1{font-family:'Syne',sans-serif;font-weight:800;letter-spacing:-.02em;
+    font-size:clamp(26px,4vw,40px);margin:0 0 4px;line-height:1.02;}
+  header h1 .rs{color:var(--psum);}
+  header p{color:var(--muted);margin:0;max-width:70ch;font-size:14.5px;line-height:1.5;}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 22px;font-size:12.5px;
+    font-family:'JetBrains Mono',monospace;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block;}
+
+  .grid-main{display:grid;grid-template-columns:1fr;gap:22px;}
+  @media(min-width:920px){.grid-main{grid-template-columns:1.5fr 1fr;align-items:start;}}
+
+  .panel{background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:16px;padding:18px 18px 20px;}
+  .panel h2{font-family:'Syne',sans-serif;font-size:13px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 16px;font-weight:700;}
+
+  /* ---- PE array ---- */
+  .arena{display:grid;justify-content:center;overflow-x:auto;}
+  .array-grid{display:grid;gap:12px;}
+  .axis{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
+    letter-spacing:.1em;display:flex;align-items:center;justify-content:center;}
+  .rowlabel{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--filt);
+    display:flex;align-items:center;justify-content:flex-end;padding-right:6px;
+    writing-mode:horizontal-tb;text-align:right;line-height:1.25;}
+
+  .pe{width:118px;min-height:104px;background:#0d1119;border:1px solid var(--line);
+    border-radius:11px;padding:7px 7px 8px;display:flex;flex-direction:column;
+    gap:5px;position:relative;transition:all .22s ease;}
+  .pe.wait{opacity:.4;}
+  .pe.active{border-color:var(--active);background:#0f1a13;
+    box-shadow:0 0 0 1px var(--glow),0 0 22px var(--glow);}
+  .pe .head{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);
+    letter-spacing:.04em;display:flex;justify-content:space-between;}
+  .pe .head b{color:var(--inp);font-weight:700;}
+  .chips{display:flex;gap:3px;justify-content:center;}
+  .chip{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;
+    justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;
+    border:1px solid var(--line);transition:.18s;}
+  .chip.f{color:var(--filt);background:#160f06;border-color:var(--filt-dim);}
+  .chip.f.hot{border-color:var(--filt);box-shadow:0 0 10px rgba(255,157,60,.5);
+    background:#251607;}
+  .chip.p{color:var(--psum);background:#0f1607;border-color:var(--psum-dim);
+    font-size:9.5px;width:22px;}
+  .chip.p.hot{border-color:var(--psum);box-shadow:0 0 10px rgba(167,240,112,.5);
+    background:#16240b;}
+  .strip-lbl{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted);
+    letter-spacing:.08em;text-align:center;margin-top:-2px;}
+  .pe .op{font-family:'JetBrains Mono',monospace;font-size:10px;text-align:center;
+    height:13px;color:var(--active);}
+
+  /* ---- controls ---- */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px;}
+  button{font-family:'JetBrains Mono',monospace;font-weight:700;cursor:pointer;
+    border:1px solid var(--line);background:#0f141d;color:var(--ink);
+    padding:9px 14px;border-radius:9px;font-size:13px;transition:.15s;}
+  button:hover{border-color:var(--psum);color:var(--psum);}
+  button:disabled{opacity:.35;cursor:default;border-color:var(--line);color:var(--muted);}
+  button.play{background:var(--psum);color:#10210a;border-color:var(--psum);min-width:96px;}
+  button.play:hover{filter:brightness(1.08);color:#10210a;}
+  .slider-row{display:flex;align-items:center;gap:12px;margin-top:16px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+  input[type=range]{flex:1;accent-color:var(--psum);height:4px;}
+  .cyc{font-size:13px;color:var(--ink);min-width:128px;}
+  .cyc b{color:var(--psum);}
+
+  /* ---- maps ---- */
+  .mats{display:flex;flex-direction:column;gap:16px;}
+  .mat-title{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);
+    margin-bottom:7px;}
+  .mat-title b{font-weight:700;}
+  .matrix{display:inline-grid;gap:4px;}
+  .mc{width:30px;height:28px;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:12px;border-radius:6px;
+    background:#0d1119;border:1px solid var(--line);transition:.18s;}
+  .mc.frow{color:var(--filt);background:#160f06;border-color:var(--filt-dim);}
+  .mc.fhot{border-color:var(--filt);box-shadow:0 0 12px rgba(255,157,60,.45);}
+  .mc.xhot{border-color:var(--inp);color:var(--inp);
+    box-shadow:0 0 12px rgba(57,198,230,.45);background:#06151a;}
+  .mc.ohot{border-color:var(--psum);box-shadow:0 0 12px rgba(167,240,112,.45);}
+  .mc.oval{color:var(--psum);}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+  .stat{background:#0d1119;border:1px solid var(--line);border-radius:10px;padding:11px 12px;}
+  .stat .k{font-size:9.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+    font-family:'JetBrains Mono',monospace;}
+  .stat .v{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;margin-top:3px;}
+  .stat .v.f{color:var(--filt);}.stat .v.g{color:var(--active);}.stat .v.i{color:var(--inp);}
+
+  .cfg{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+  .cfg label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+    display:flex;flex-direction:column;gap:5px;}
+  .cfg input{width:54px;background:#0d1119;border:1px solid var(--line);color:var(--ink);
+    border-radius:7px;padding:7px 9px;font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+  .energy{margin-top:14px;background:#0d1119;border:1px solid var(--line);
+    border-radius:10px;padding:12px 13px;font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;color:var(--muted);line-height:1.7;}
+  .energy b{color:var(--ink);font-weight:700;}
+  .energy .save{color:var(--psum);}
+  .bar{height:7px;border-radius:4px;background:#0b0f16;border:1px solid var(--line);
+    overflow:hidden;margin:3px 0 8px;}
+  .bar > i{display:block;height:100%;}
+  .bar.e i{background:var(--psum);}
+  .bar.n i{background:#d05a5a;}
+
+  .note{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:18px;
+    border-top:1px solid var(--line);padding-top:14px;}
+  .note code{background:#0d1119;border:1px solid var(--line);padding:1px 6px;border-radius:5px;
+    font-family:'JetBrains Mono',monospace;color:var(--filt);font-size:11.5px;}
+  .ok{color:var(--active);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Eyeriss · <span class="rs">row-stationary</span></h1>
+    <p>Mỗi <b style="color:var(--filt)">filter row</b> nằm yên trong 1 PE (stationary). <b style="color:var(--inp)">Input row</b> stream qua và được dùng lại theo <b>đường chéo</b> (input row <code>e+r</code> chung cho mọi PE trên cùng anti-diagonal). <b style="color:var(--psum)">Partial sum</b> cộng dồn theo <b>chiều dọc</b> qua các hàng PE → 1 output row 2D. Mỗi cycle 1 PE làm đúng 1 MAC: <code>psum[ow] += f[kw]·x[ow+kw]</code>.</p>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--filt)"></i> filter weight — ở yên trong PE (RF)</span>
+    <span><i class="dot" style="background:var(--inp)"></i> input — reuse theo đường chéo</span>
+    <span><i class="dot" style="background:var(--psum)"></i> psum — accumulate theo chiều dọc</span>
+    <span><i class="dot" style="background:var(--active)"></i> PE active (MAC trong cycle này)</span>
+  </div>
+
+  <div class="cfg">
+    <label>KH (filter H)<input id="cfgKH" type="number" min="2" max="4" value="3"></label>
+    <label>KW (filter W)<input id="cfgKW" type="number" min="2" max="4" value="3"></label>
+    <label>H (input H)<input id="cfgH" type="number" min="3" max="6" value="5"></label>
+    <label>W (input W)<input id="cfgW" type="number" min="3" max="6" value="5"></label>
+    <button id="randBtn">↻ random</button>
+    <button id="rebuildBtn">áp dụng</button>
+  </div>
+
+  <div class="grid-main">
+    <!-- ARRAY -->
+    <div class="panel">
+      <h2>Mảng PE · hàng = filter row r · cột = output row e</h2>
+      <div class="arena"><div id="arrayGrid" class="array-grid"></div></div>
+      <div class="controls">
+        <button id="prevBtn">‹ Prev</button>
+        <button id="playBtn" class="play">▶ Play</button>
+        <button id="nextBtn">Next ›</button>
+        <button id="resetBtn">⟲ Reset</button>
+      </div>
+      <div class="slider-row">
+        <span class="cyc">cycle <b id="cycNow">0</b> / <span id="cycTot">0</span></span>
+        <input id="slider" type="range" min="0" max="0" value="0">
+      </div>
+      <div class="note">
+        Skew dọc <code>start_delay = r</code>: hàng PE sâu hơn bắt đầu trễ để psum kịp
+        chảy xuống. PE chạy hết chuỗi <code>(ow, kw)</code> trong <code>OW·KW</code> cycle.
+        Tổng cycle 1 pass = <code>(KH−1) + OW·KW</code>.
+      </div>
+    </div>
+
+    <!-- MAPS + STATS -->
+    <div class="panel">
+      <h2>Feature map &amp; thống kê</h2>
+      <div class="mats">
+        <div>
+          <div class="mat-title"><b style="color:var(--inp)">Input</b> [H×W] — ô sáng = activation đang đọc</div>
+          <div id="matX" class="matrix"></div>
+        </div>
+        <div>
+          <div class="mat-title"><b style="color:var(--filt)">Filter</b> [KH×KW] — mỗi hàng ở yên trong 1 PE</div>
+          <div id="matW" class="matrix"></div>
+        </div>
+        <div>
+          <div class="mat-title"><b style="color:var(--psum)">Output</b> [OH×OW] — psum tích lũy <span id="ostatus" class="ok"></span></div>
+          <div id="matO" class="matrix"></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">MAC active / cycle</div><div class="v f" id="sActive">0</div></div>
+        <div class="stat"><div class="k">Tổng MAC</div><div class="v g" id="sTotal">0</div></div>
+        <div class="stat"><div class="k">Tổng cycle</div><div class="v i" id="sCyc">0</div></div>
+        <div class="stat"><div class="k">PE utilization</div><div class="v" id="sUtil">0%</div></div>
+      </div>
+      <div class="energy">
+        <div>Data movement — DRAM access (1 pass, single channel):</div>
+        <div>Eyeriss <b id="eDram">0</b> &nbsp;<span class="save" id="eRed"></span></div>
+        <div class="bar e"><i id="eBar" style="width:8%"></i></div>
+        <div>Naive (đọc lại mỗi MAC) <b id="nDram">0</b></div>
+        <div class="bar n"><i id="nBar" style="width:100%"></i></div>
+        <div>Năng lượng ước lượng (DRAM≈200× MAC): tiết kiệm <span class="save" id="eSave">0×</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== mô phỏng row-stationary, cycle-accurate (port từ eyeriss_sim_cycle.py) ======
+// 1 pass single-channel: array [KH x OH], PE[r][e] = 1D conv (filter row r ⊛ input row e+r).
+function simulate(W_, X_){          // W_: filter [KH][KW], X_: input [H][W]
+  const KH=W_.length, KW=W_[0].length, H=X_.length, Wd=X_[0].length;
+  const OH=H-KH+1, OW=Wd-KW+1;
+  const pes=[];
+  for(let r=0;r<KH;r++){pes.push([]);for(let e=0;e<OH;e++){
+    pes[r].push({psum:Array(OW).fill(0), prog:[], pc:0, delay:r});
+    for(let ow=0;ow<OW;ow++)for(let kw=0;kw<KW;kw++)pes[r][e].prog.push([ow,kw]);
+  }}
+  const total=(KH-1)+OW*KW;
+  const frames=[];
+  frames.push(makeFrame(pes,KH,OH,OW,null,0,0,-1));
+  let totalMacs=0;
+  for(let cyc=0;cyc<total;cyc++){
+    let active=0; const ops=[];
+    for(let r=0;r<KH;r++)for(let e=0;e<OH;e++){
+      const pe=pes[r][e];
+      if(cyc>=pe.delay && pe.pc<pe.prog.length){
+        const [ow,kw]=pe.prog[pe.pc];
+        const f=W_[r][kw], x=X_[e+r][ow+kw], prod=f*x;
+        pe.psum[ow]+=prod; pe.pc++; active++;
+        ops.push({r,e,ow,kw, frow:r,fcol:kw, xrow:e+r,xcol:ow+kw, f,x,prod});
+      }
+    }
+    totalMacs+=active;
+    frames.push(makeFrame(pes,KH,OH,OW,ops,active,totalMacs,cyc));
+  }
+  // output = sum_r psum
+  const O=[];for(let e=0;e<OH;e++){O.push([]);for(let ow=0;ow<OW;ow++){let s=0;for(let r=0;r<KH;r++)s+=pes[r][e].psum[ow];O[e].push(s);}}
+  return {frames,total,KH,KW,H,Wd:Wd,OH,OW,O};
+}
+function makeFrame(pes,KH,OH,OW,ops,active,totalMacs,cyc){
+  const grid=[];
+  for(let r=0;r<KH;r++){grid.push([]);for(let e=0;e<OH;e++){const p=pes[r][e];
+    grid[r].push({psum:[...p.psum], pc:p.pc, started:(cyc>=p.delay)});}}
+  // live partial output = sum_r psum
+  const O=[];for(let e=0;e<OH;e++){O.push([]);for(let ow=0;ow<OW;ow++){let s=0;for(let r=0;r<KH;r++)s+=grid[r][e].psum[ow];O[e].push(s);}}
+  return {grid,O,ops:ops?ops.map(o=>({...o})):[],active,totalMacs,cyc};
+}
+function fmt(x){ if(x===0) return '0'; const r=Math.round(x*100)/100; return Number.isInteger(r)?String(r):r.toFixed(2); }
+
+// ====== state ======
+let WF,X,KH,KW,H,Wd,sim,cur=0,timer=null;
+
+function buildData(kh,kw,h,w){
+  if(kh===3&&kw===3&&h===5&&w===5){
+    WF=[[1,0,-1],[1,0,-1],[1,0,-1]];                 // ví dụ: Sobel-ish edge
+    X=[[3,0,1,2,7],[1,5,8,9,3],[2,7,2,5,1],[0,1,3,1,7],[4,2,1,6,2]];
+  } else { randomize(kh,kw,h,w); }
+}
+function randomize(kh,kw,h,w){
+  WF=[];for(let i=0;i<kh;i++){WF.push([]);for(let j=0;j<kw;j++)WF[i].push(Math.floor(Math.random()*5)-2);}
+  X=[];for(let i=0;i<h;i++){X.push([]);for(let j=0;j<w;j++)X[i].push(Math.floor(Math.random()*9));}
+}
+
+function rebuild(){
+  KH=Math.max(2,Math.min(4,+document.getElementById('cfgKH').value||3));
+  KW=Math.max(2,Math.min(4,+document.getElementById('cfgKW').value||3));
+  H =Math.max(3,Math.min(6,+document.getElementById('cfgH').value||5));
+  Wd=Math.max(3,Math.min(6,+document.getElementById('cfgW').value||5));
+  if(H<KH)H=KH; if(Wd<KW)Wd=KW;
+  document.getElementById('cfgKH').value=KH;document.getElementById('cfgKW').value=KW;
+  document.getElementById('cfgH').value=H;document.getElementById('cfgW').value=Wd;
+  if(!WF||WF.length!==KH||WF[0].length!==KW||X.length!==H||X[0].length!==Wd) buildData(KH,KW,H,Wd);
+  sim=simulate(WF,X);
+  cur=0; stop();
+  const sl=document.getElementById('slider'); sl.max=sim.total; sl.value=0;
+  document.getElementById('cycTot').textContent=sim.total;
+  document.getElementById('sCyc').textContent=sim.total;
+  buildArrayDom(); buildMatDom(); computeEnergy(); render();
+}
+
+// ---- build PE grid DOM ----
+function buildArrayDom(){
+  const g=document.getElementById('arrayGrid');
+  g.style.gridTemplateColumns=`64px repeat(${sim.OH},118px)`;
+  g.innerHTML='';
+  // corner + column headers (output row e)
+  const corner=document.createElement('div');corner.className='axis';corner.textContent='r ╲ e';
+  g.appendChild(corner);
+  for(let e=0;e<sim.OH;e++){const h=document.createElement('div');h.className='axis';
+    h.style.color='var(--psum)';h.textContent='out row '+e;g.appendChild(h);}
+  // rows
+  for(let r=0;r<sim.KH;r++){
+    const lbl=document.createElement('div');lbl.className='rowlabel';
+    lbl.innerHTML='filter<br>row '+r;g.appendChild(lbl);
+    for(let e=0;e<sim.OH;e++){
+      const pe=document.createElement('div');pe.className='pe';pe.id='pe'+r+'_'+e;
+      let fchips='';for(let kw=0;kw<sim.KW;kw++)fchips+=`<span class="chip f" id="fc${r}_${e}_${kw}">${WF[r][kw]}</span>`;
+      let pchips='';for(let ow=0;ow<sim.OW;ow++)pchips+=`<span class="chip p" id="pc${r}_${e}_${ow}">0</span>`;
+      pe.innerHTML=`<div class="head"><span>PE r${r}</span><span>x·row <b>${e+r}</b></span></div>
+        <div class="chips">${fchips}</div>
+        <div class="chips">${pchips}</div>
+        <div class="strip-lbl">psum[ow]</div>
+        <div class="op" id="op${r}_${e}"></div>`;
+      g.appendChild(pe);
+    }
+  }
+}
+function buildMatDom(){
+  const mX=document.getElementById('matX'),mW=document.getElementById('matW'),mO=document.getElementById('matO');
+  mX.style.gridTemplateColumns=`repeat(${Wd},30px)`;
+  mW.style.gridTemplateColumns=`repeat(${KW},30px)`;
+  mO.style.gridTemplateColumns=`repeat(${sim.OW},30px)`;
+  mX.innerHTML='';mW.innerHTML='';mO.innerHTML='';
+  for(let i=0;i<H;i++)for(let j=0;j<Wd;j++){const d=document.createElement('div');d.className='mc';d.id='x'+i+'_'+j;d.textContent=X[i][j];mX.appendChild(d);}
+  for(let i=0;i<KH;i++)for(let j=0;j<KW;j++){const d=document.createElement('div');d.className='mc frow';d.id='w'+i+'_'+j;d.textContent=WF[i][j];mW.appendChild(d);}
+  for(let i=0;i<sim.OH;i++)for(let j=0;j<sim.OW;j++){const d=document.createElement('div');d.className='mc oval';d.id='o'+i+'_'+j;d.textContent='0';mO.appendChild(d);}
+}
+
+// ---- energy / data-movement (static cho config, single channel 1 pass) ----
+function computeEnergy(){
+  const {KH,KW,OH,OW,H,Wd}=sim;
+  const macs=KH*KW*OW*OH;
+  const filterDram=KH*KW, inputDram=H*Wd, psumDram=OH*OW;
+  const dramE=filterDram+inputDram+psumDram, dramN=3*macs;
+  const E={mac:1,rf:1,pe:2,dram:200};
+  const psumPe=OH*OW*KH;
+  const eE=dramE*E.dram + psumPe*E.pe + macs*E.rf + macs*E.mac;
+  const eN=dramN*E.dram + macs*E.mac;
+  document.getElementById('eDram').textContent=dramE;
+  document.getElementById('nDram').textContent=dramN;
+  document.getElementById('eRed').textContent='→ giảm '+(dramN/dramE).toFixed(1)+'× DRAM';
+  document.getElementById('eBar').style.width=Math.max(4,100*dramE/dramN)+'%';
+  document.getElementById('eSave').textContent=(eN/eE).toFixed(1)+'×';
+}
+
+// ---- render a frame ----
+function render(){
+  const f=sim.frames[cur];
+  document.getElementById('cycNow').textContent=f.cyc<0?0:f.cyc+1;
+  document.getElementById('slider').value=cur;
+
+  // reset transient highlights
+  for(let r=0;r<sim.KH;r++)for(let e=0;e<sim.OH;e++){
+    const pe=document.getElementById('pe'+r+'_'+e);
+    pe.classList.remove('active'); pe.classList.toggle('wait',!f.grid[r][e].started);
+    document.getElementById('op'+r+'_'+e).textContent='';
+    for(let kw=0;kw<sim.KW;kw++)document.getElementById('fc'+r+'_'+e+'_'+kw).classList.remove('hot');
+    for(let ow=0;ow<sim.OW;ow++){const c=document.getElementById('pc'+r+'_'+e+'_'+ow);
+      c.classList.remove('hot');c.textContent=fmt(f.grid[r][e].psum[ow]);}
+  }
+  for(let i=0;i<H;i++)for(let j=0;j<Wd;j++)document.getElementById('x'+i+'_'+j).classList.remove('xhot');
+  for(let i=0;i<KH;i++)for(let j=0;j<KW;j++)document.getElementById('w'+i+'_'+j).classList.remove('fhot');
+  for(let i=0;i<sim.OH;i++)for(let j=0;j<sim.OW;j++)document.getElementById('o'+i+'_'+j).classList.remove('ohot');
+
+  // apply ops of this cycle
+  for(const o of f.ops){
+    const pe=document.getElementById('pe'+o.r+'_'+o.e); pe.classList.add('active');
+    document.getElementById('fc'+o.r+'_'+o.e+'_'+o.kw).classList.add('hot');
+    document.getElementById('pc'+o.r+'_'+o.e+'_'+o.ow).classList.add('hot');
+    document.getElementById('op'+o.r+'_'+o.e).textContent=`${fmt(o.f)}·${fmt(o.x)}=${fmt(o.prod)}`;
+    document.getElementById('x'+o.xrow+'_'+o.xcol).classList.add('xhot');   // input cell (diagonal reuse)
+    document.getElementById('w'+o.frow+'_'+o.fcol).classList.add('fhot');   // filter weight
+    document.getElementById('o'+o.e+'_'+o.ow).classList.add('ohot');        // output cell receiving psum
+  }
+  // output values (live partial sums)
+  for(let i=0;i<sim.OH;i++)for(let j=0;j<sim.OW;j++)document.getElementById('o'+i+'_'+j).textContent=fmt(f.O[i][j]);
+
+  // stats
+  document.getElementById('sActive').textContent=f.active;
+  document.getElementById('sTotal').textContent=f.totalMacs;
+  const util=Math.round(f.active/(sim.KH*sim.OH)*100);
+  document.getElementById('sUtil').textContent=util+'%';
+  document.getElementById('ostatus').textContent=(cur===sim.total)?'✓ hoàn tất = conv2d':'';
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===sim.total;
+}
+
+// ---- controls ----
+function next(){ if(cur<sim.total){cur++;render();} else stop(); }
+function prev(){ if(cur>0){cur--;render();} }
+function play(){ if(cur>=sim.total) cur=0; timer=setInterval(next,650);
+  document.getElementById('playBtn').textContent='❚❚ Pause'; }
+function stop(){ if(timer){clearInterval(timer);timer=null;}
+  document.getElementById('playBtn').textContent='▶ Play'; }
+document.getElementById('playBtn').onclick=()=>{ timer?stop():play(); };
+document.getElementById('nextBtn').onclick=()=>{stop();next();};
+document.getElementById('prevBtn').onclick=()=>{stop();prev();};
+document.getElementById('resetBtn').onclick=()=>{stop();cur=0;render();};
+document.getElementById('slider').oninput=e=>{stop();cur=+e.target.value;render();};
+document.getElementById('rebuildBtn').onclick=()=>{WF=null;rebuild();};
+document.getElementById('randBtn').onclick=()=>{
+  KH=+document.getElementById('cfgKH').value;KW=+document.getElementById('cfgKW').value;
+  H=+document.getElementById('cfgH').value;Wd=+document.getElementById('cfgW').value;
+  randomize(KH,KW,H,Wd);rebuild();
+};
+
+rebuild();
+</script>
+</body>
+</html>
