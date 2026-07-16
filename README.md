@@ -193,7 +193,7 @@ Mọi optimization của compiler là phản ứng với một ràng buộc hard
 - 🎓 CMU 10-414 *Deep Learning Systems* (Tianqi Chen — tác giả TVM)
 - 🔗 Toy Tutorial chính thức: [mlir.llvm.org/docs/Tutorials/Toy](https://mlir.llvm.org/docs/Tutorials/Toy/)
 
-📁 **Chi tiết**: [`stage2_CompilerCodegen/README.md`](./stage2_CompilerCodegen/) *(coming soon)*
+📁 **Chi tiết**: [`stage2_CompilerCodegen/README.md`](./stage2_CompilerCodegen/README.md)
 
 ---
 
