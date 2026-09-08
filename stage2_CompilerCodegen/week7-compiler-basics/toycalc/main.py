@@ -46,7 +46,7 @@ from typing import List, Optional, Any
 try:
     from .lexer import Lexer, LexerError
     from .parser import Parser, parse_source, ParseError
-    from .ast_printer import ASTPrinter, CompactPrinter
+    from .ast_printer import ASTPrinter, CompactPrinter, DOTPrinter
     from .ir import ASTToIR
     from .passes.const_fold import ConstantFoldingPass
     from .passes.dce import DeadCodeEliminationPass
@@ -58,7 +58,7 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from toycalc.lexer import Lexer, LexerError
     from toycalc.parser import Parser, parse_source, ParseError
-    from toycalc.ast_printer import ASTPrinter, CompactPrinter
+    from toycalc.ast_printer import ASTPrinter, CompactPrinter, DOTPrinter
     from toycalc.ir import ASTToIR
     from toycalc.passes.const_fold import ConstantFoldingPass
     from toycalc.passes.dce import DeadCodeEliminationPass
@@ -145,12 +145,14 @@ def compile_and_run(
 
     ast_formatted = ASTPrinter().format(ast)
     ast_compact = CompactPrinter().format(ast)
+    ast_dot = DOTPrinter().format(ast)
 
     if verbose:
         print("─" * 70)
         print("[Phase 2: Parser] Abstract Syntax Tree (AST)")
         print(ast_formatted)
         print(f"\n  Compact S-expression: {ast_compact}\n")
+        print(f"  DOT Graphviz format:\n{ast_dot}\n")
     elif dump_ast:
         print("--- AST (Abstract Syntax Tree) ---")
         print(ast_formatted)
