@@ -199,7 +199,7 @@ Resolutions:
 ```bash
 # Chỉ build tools cần cho bài tập
 ninja mlir-opt           # CLI tool chính
-ninja mlir-cpu-runner    # Chạy MLIR trên CPU
+ninja mlir-runner    # Chạy MLIR trên CPU
 ninja mlir-translate     # MLIR ↔ LLVM IR
 ninja toyc-ch1           # Toy tutorial chapter 1 (tuần 9)
 ninja check-mlir         # Chạy toàn bộ MLIR test suite

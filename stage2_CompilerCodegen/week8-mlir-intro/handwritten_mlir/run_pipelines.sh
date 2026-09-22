@@ -16,7 +16,7 @@
 set -euo pipefail
 
 MLIR_OPT="${1:-mlir-opt}"
-MLIR_RUNNER="${MLIR_RUNNER:-mlir-cpu-runner}"
+MLIR_RUNNER="${MLIR_RUNNER:-mlir-runner}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/pipeline_outputs"
 
@@ -133,9 +133,9 @@ echo "    ✓ Saved: $OUTPUT_DIR/03_ir_after_all.log"
 echo
 
 # ─────────────────────────────────────────────────────
-# 9. Dot product: chạy (nếu mlir-cpu-runner có)
+# 9. Dot product: chạy (nếu mlir-runner có)
 # ─────────────────────────────────────────────────────
-echo ">>> [9] Dot product: chạy qua mlir-cpu-runner"
+echo ">>> [9] Dot product: chạy qua mlir-runner"
 if command -v "$MLIR_RUNNER" &>/dev/null; then
   $MLIR_OPT "$SCRIPT_DIR/03_dot_product.mlir" \
     --convert-scf-to-cf \
@@ -149,7 +149,7 @@ if command -v "$MLIR_RUNNER" &>/dev/null; then
   2>&1 | tee "$OUTPUT_DIR/03_run_output.txt"
   echo "    ✓ Expected: 30.0 (= 1*1 + 2*2 + 3*3 + 4*4)"
 else
-  echo "    ⚠ mlir-cpu-runner not found — skip execution"
+  echo "    ⚠ mlir-runner not found — skip execution"
   echo "    ➤ Add LLVM build/bin to PATH, then re-run"
 fi
 echo
@@ -167,4 +167,4 @@ echo "  1. So sánh 01_arith_basic.mlir với 01_canonicalized.mlir (constant fo
 echo "  2. Đọc 02_ir_after_all.log (IR sau từng pass)"
 echo "  3. So sánh 02_scf_loop.mlir với 02_cf.mlir (structured → unstructured)"
 echo "  4. So sánh 02_scf_loop.mlir với 02_llvm.mlir (high-level → low-level)"
-echo "  5. Nếu có mlir-cpu-runner: verify dot product = 30.0"
+echo "  5. Nếu có mlir-runner: verify dot product = 30.0"

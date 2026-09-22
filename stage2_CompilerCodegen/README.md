@@ -308,7 +308,7 @@ mlir-opt input.mlir --convert-scf-to-cf --convert-arith-to-llvm
 mlir-opt input.mlir --mlir-print-ir-after-all  # xem IR sau từng pass
 ```
 
-Yêu cầu: viết được tay (không copy) 1 hàm MLIR tính `dot product` bằng `scf.for` + `arith`, chạy qua `mlir-cpu-runner` ra kết quả đúng.
+Yêu cầu: viết được tay (không copy) 1 hàm MLIR tính `dot product` bằng `scf.for` + `arith`, chạy qua `mlir-runner` ra kết quả đúng.
 
 **Bài tập 8.3 — Đọc code MLIR thật:** đọc source `mlir/lib/Dialect/Arith/IR/ArithOps.cpp` — xem 1 op được define + canonicalize pattern thế nào. Note lại cấu trúc.
 

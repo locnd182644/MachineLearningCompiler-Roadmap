@@ -69,7 +69,7 @@ week8-mlir-intro/
 ├── handwritten_mlir/
 │   ├── 01_arith_basic.mlir      # Arithmetic cơ bản (func + arith dialects)
 │   ├── 02_scf_loop.mlir         # Structured control flow (scf dialect)
-│   ├── 03_dot_product.mlir      # Dot product chạy được qua mlir-cpu-runner
+│   ├── 03_dot_product.mlir      # Dot product chạy được qua mlir-runner
 │   └── run_pipelines.sh         # Các pass pipeline đã thử + output
 └── arith_source_notes.md        # Note từ đọc ArithOps.cpp/ArithOps.td
 ```
@@ -325,7 +325,7 @@ echo 'func.func @test() { return }' | mlir-opt
 - [ ] `mlir-opt --version` chạy được
 - [ ] `echo 'func.func @test() { return }' | mlir-opt` parse thành công
 - [ ] `ninja check-mlir` đạt >95% test pass
-- [ ] `mlir-cpu-runner --help` hiện help text
+- [ ] `mlir-runner --help` hiện help text
 - [ ] Lưu build log vào [`build_notes.md`](./build_notes.md)
 
 ---
@@ -414,7 +414,7 @@ mlir-opt 02_scf_loop.mlir \
 
 #### 8.2c — Dot Product chạy thật (`03_dot_product.mlir`)
 
-**Bài tập quan trọng nhất tuần**: viết dot product dùng `memref` + `scf.for`, chạy qua `mlir-cpu-runner`:
+**Bài tập quan trọng nhất tuần**: viết dot product dùng `memref` + `scf.for`, chạy qua `mlir-runner`:
 
 ```mlir
 func.func private @printMemrefF32(memref<*xf32>)
@@ -451,7 +451,7 @@ mlir-opt 03_dot_product.mlir \
   --convert-cf-to-llvm \
   --convert-func-to-llvm \
   --reconcile-unrealized-casts \
-| mlir-cpu-runner -e main -entry-point-result=void \
+| mlir-runner -e main -entry-point-result=void \
     --shared-libs=libmlir_runner_utils.so,libmlir_c_runner_utils.so
 # Expected: 30.0 (= 1*1 + 2*2 + 3*3 + 4*4)
 ```
@@ -580,7 +580,7 @@ for i = 0 to M:                linalg.matmul
 ### Bài tập 8.2 — mlir-opt hands-on
 - [ ] Viết tay `01_arith_basic.mlir` (hàm cộng nhân đơn giản), parse được bằng `mlir-opt`
 - [ ] Viết tay `02_scf_loop.mlir` dùng `scf.for` + `iter_args`
-- [ ] Viết tay `03_dot_product.mlir` — chạy đúng kết quả qua `mlir-cpu-runner`
+- [ ] Viết tay `03_dot_product.mlir` — chạy đúng kết quả qua `mlir-runner`
 - [ ] Chạy `--canonicalize`, quan sát khác biệt (constant folding!)
 - [ ] Chạy pipeline lower xuống LLVM dialect: `--convert-scf-to-cf --convert-arith-to-llvm ...`
 - [ ] Dùng `--mlir-print-ir-after-all` xem IR sau từng pass, lưu output

@@ -1,10 +1,10 @@
 // =============================================================================
-// Bài tập 8.2c — Dot Product chạy được qua mlir-cpu-runner
+// Bài tập 8.2c — Dot Product chạy được qua mlir-runner
 //
 // Tính dot product: result = sum(A[i] * B[i]) cho i = 0..N-1
 //
 // Đây là bài tập tổng hợp: dùng func, arith, scf, memref
-// và chạy thật qua mlir-cpu-runner để verify kết quả.
+// và chạy thật qua mlir-runner để verify kết quả.
 //
 // Pipeline lower + run:
 //   mlir-opt 03_dot_product.mlir \
@@ -14,7 +14,7 @@
 //     --convert-cf-to-llvm \
 //     --convert-func-to-llvm \
 //     --reconcile-unrealized-casts \
-//   | mlir-cpu-runner -e main -entry-point-result=void \
+//   | mlir-runner -e main -entry-point-result=void \
 //     --shared-libs=libmlir_runner_utils.so,libmlir_c_runner_utils.so
 //
 // Expected output: 30.0 (= 1*1 + 2*2 + 3*3 + 4*4)
