@@ -248,11 +248,11 @@ LogicalResult arith::AddIOp::verify() {
 
 ### Câu hỏi tự kiểm tra
 
-- [ ] Fold function trả về gì khi KHÔNG fold được? → `nullptr` (hoặc `OpFoldResult()`)
-- [ ] Tại sao `Commutative` trait quan trọng? → Optimizer biết `a + b = b + a`, có thể normalize
-- [ ] Canonicalization khác fold ở đâu? → Fold chỉ fold constants/identity, canonicalization rewrite cấu trúc
-- [ ] ODS tự sinh những gì? → Class, parser, printer, builder, verifier skeleton, trait impls
-- [ ] Khi nào MLIR gọi fold? → Trong canonicalize pass, MLIR tự gọi fold cho mọi op
+- [x] Fold function trả về gì khi KHÔNG fold được? → `nullptr` (hoặc `OpFoldResult()`)
+- [x] Tại sao `Commutative` trait quan trọng? → Optimizer biết `a + b = b + a`, có thể normalize
+- [x] Canonicalization khác fold ở đâu? → Fold chỉ fold constants/identity, canonicalization rewrite cấu trúc
+- [x] ODS tự sinh những gì? → Class, parser, printer, builder, verifier skeleton, trait impls
+- [x] Khi nào MLIR gọi fold? → Trong canonicalize pass, MLIR tự gọi fold cho mọi op
 
 ---
 

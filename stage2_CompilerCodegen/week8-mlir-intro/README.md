@@ -322,11 +322,11 @@ echo 'func.func @test() { return }' | mlir-opt
 
 #### Checklist verify
 
-- [ ] `mlir-opt --version` chạy được
-- [ ] `echo 'func.func @test() { return }' | mlir-opt` parse thành công
-- [ ] `ninja check-mlir` đạt >95% test pass
-- [ ] `mlir-runner --help` hiện help text
-- [ ] Lưu build log vào [`build_notes.md`](./build_notes.md)
+- [x] `mlir-opt --version` chạy được
+- [x] `echo 'func.func @test() { return }' | mlir-opt` parse thành công
+- [x] `ninja check-mlir` đạt >95% test pass
+- [x] `mlir-runner --help` hiện help text
+- [x] Lưu build log vào [`build_notes.md`](./build_notes.md)
 
 ---
 
@@ -562,44 +562,44 @@ for i = 0 to M:                linalg.matmul
 ## TODO Checklist
 
 ### Lý thuyết (8h)
-- [ ] Đọc MLIR paper (Lattner et al. 2021, CGO) — lần 1: big picture
-- [ ] Đọc MLIR paper lần 2 — tập trung: dialects, regions, progressive lowering → viết [`paper_notes_mlir.md`](./paper_notes_mlir.md)
-- [ ] Đọc MLIR LangRef: operation / value / type / attribute / region / block
-- [ ] Đọc tutorial "Understanding the IR Structure"
-- [ ] Hiểu block arguments thay cho phi nodes (so sánh với SSA tuần 7)
-- [ ] Tour các dialect: `func`, `arith`, `tensor`, `memref`, `linalg`, `affine`, `scf`, `vector`, `llvm` — note mỗi dialect ở mức trừu tượng nào
-- [ ] Xem talk MLIR Tutorial (Mehdi Amini, LLVM Dev Meeting)
+- [x] Đọc MLIR paper (Lattner et al. 2021, CGO) — lần 1: big picture
+- [x] Đọc MLIR paper lần 2 — tập trung: dialects, regions, progressive lowering → viết [`paper_notes_mlir.md`](./paper_notes_mlir.md)
+- [x] Đọc MLIR LangRef: operation / value / type / attribute / region / block
+- [x] Đọc tutorial "Understanding the IR Structure"
+- [x] Hiểu block arguments thay cho phi nodes (so sánh với SSA tuần 7)
+- [x] Tour các dialect: `func`, `arith`, `tensor`, `memref`, `linalg`, `affine`, `scf`, `vector`, `llvm` — note mỗi dialect ở mức trừu tượng nào
+- [x] Xem talk MLIR Tutorial (Mehdi Amini, LLVM Dev Meeting)
 
 ### Bài tập 8.1 — Build LLVM/MLIR từ source
-- [ ] Clone llvm-project
-- [ ] CMake configure với `-DLLVM_ENABLE_PROJECTS=mlir -DLLVM_BUILD_EXAMPLES=ON` (xem lệnh đầy đủ ở trên)
-- [ ] `ninja check-mlir` pass toàn bộ
-- [ ] Note lại RAM/disk/thời gian build + lỗi gặp phải vào [`build_notes.md`](./build_notes.md)
-- [ ] Thêm `build/bin` vào PATH, verify `mlir-opt --version`
+- [x] Clone llvm-project
+- [x] CMake configure với `-DLLVM_ENABLE_PROJECTS=mlir -DLLVM_BUILD_EXAMPLES=ON` (xem lệnh đầy đủ ở trên)
+- [x] `ninja check-mlir` pass toàn bộ
+- [x] Note lại RAM/disk/thời gian build + lỗi gặp phải vào [`build_notes.md`](./build_notes.md)
+- [x] Thêm `build/bin` vào PATH, verify `mlir-opt --version`
 
 ### Bài tập 8.2 — mlir-opt hands-on
-- [ ] Viết tay `01_arith_basic.mlir` (hàm cộng nhân đơn giản), parse được bằng `mlir-opt`
-- [ ] Viết tay `02_scf_loop.mlir` dùng `scf.for` + `iter_args`
-- [ ] Viết tay `03_dot_product.mlir` — chạy đúng kết quả qua `mlir-runner`
-- [ ] Chạy `--canonicalize`, quan sát khác biệt (constant folding!)
-- [ ] Chạy pipeline lower xuống LLVM dialect: `--convert-scf-to-cf --convert-arith-to-llvm ...`
-- [ ] Dùng `--mlir-print-ir-after-all` xem IR sau từng pass, lưu output
-- [ ] Tạo `run_pipelines.sh` lưu lại các pipeline đã thử
+- [x] Viết tay `01_arith_basic.mlir` (hàm cộng nhân đơn giản), parse được bằng `mlir-opt`
+- [x] Viết tay `02_scf_loop.mlir` dùng `scf.for` + `iter_args`
+- [x] Viết tay `03_dot_product.mlir` — chạy đúng kết quả qua `mlir-runner`
+- [x] Chạy `--canonicalize`, quan sát khác biệt (constant folding!)
+- [x] Chạy pipeline lower xuống LLVM dialect: `--convert-scf-to-cf --convert-arith-to-llvm ...`
+- [x] Dùng `--mlir-print-ir-after-all` xem IR sau từng pass, lưu output
+- [x] Tạo `run_pipelines.sh` lưu lại các pipeline đã thử
 
 ### Bài tập 8.3 — Đọc code MLIR thật
-- [ ] Đọc `mlir/lib/Dialect/Arith/IR/ArithOps.cpp` — cách define op + folder + canonicalization
-- [ ] Đọc file `.td` (TableGen/ODS) tương ứng `ArithOps.td` — hiểu ODS sinh gì
-- [ ] Note cấu trúc vào `arith_source_notes.md`
+- [x] Đọc `mlir/lib/Dialect/Arith/IR/ArithOps.cpp` — cách define op + folder + canonicalization
+- [x] Đọc file `.td` (TableGen/ODS) tương ứng `ArithOps.td` — hiểu ODS sinh gì
+- [x] Note cấu trúc vào `arith_source_notes.md`
 
 ---
 
 ## Output cuối tuần
 
-- [ ] LLVM/MLIR build thành công (`check-mlir` pass)
-- [ ] 3+ file `.mlir` viết tay + `run_pipelines.sh`
-- [ ] [`paper_notes_mlir.md`](./paper_notes_mlir.md) — notes MLIR paper
-- [ ] [`mlir_anatomy_cheatsheet.md`](./mlir_anatomy_cheatsheet.md) — quick reference
-- [ ] [`build_notes.md`](./build_notes.md) — build log + troubleshooting
+- [x] LLVM/MLIR build thành công (`check-mlir` pass)
+- [x] 3+ file `.mlir` viết tay + `run_pipelines.sh`
+- [x] [`paper_notes_mlir.md`](./paper_notes_mlir.md) — notes MLIR paper
+- [x] [`mlir_anatomy_cheatsheet.md`](./mlir_anatomy_cheatsheet.md) — quick reference
+- [x] [`build_notes.md`](./build_notes.md) — build log + troubleshooting
 - [ ] (Optional) Blog post tuần 8
 
 ---
